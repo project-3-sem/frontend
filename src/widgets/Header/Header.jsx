@@ -20,6 +20,7 @@ function Header() {
 
     return (
         <div style={baseStyle}>
+            <img src="/logo.png" alt="logo" style={{ width: '42.999996185302734px', height: '45.38893127441406px', position: 'absolute', top: '19px', left: '23px' }} />
             <span style={{ ...textBase, color: '#000000' }}>LING </span>
             <span style={{ ...textBase, color: '#DB80FF' }}>AI</span>
         </div>
