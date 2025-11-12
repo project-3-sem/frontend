@@ -1,19 +1,29 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import HomeTab from '../../widgets/HomeTab/HomeTab.jsx';
 import StartSpeakButton from '../../widgets/buttons/StartSpeakButton.jsx';
 
-
-
 function Home() {
+  const navigate = useNavigate();
+
   const pageStyle = {
     fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif'
+  };
+
+  const handleStartClick = () => {
+    navigate('/texts');
   };
 
   return (
     <div style={pageStyle}>
       <style>{`
+        @keyframes heroFadeIn {
+          0% { opacity: 0; transform: translateY(24px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
         .home-canvas { position: relative; height: 3242px; }
-        .hero-abs { position: absolute; top: 318px; left: 409px; width: 551px; height: 277px; opacity: 1; }
+        .hero-abs { position: absolute; top: 318px; left: 409px; width: 551px; height: 277px; opacity: 0; animation: heroFadeIn 0.9s ease-out 0.25s forwards; }
         .hero-text { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-weight: 600; font-size: 50px; line-height: 100%; letter-spacing: 0.02em; text-align: center; color: #000000; }
         .space-06 { letter-spacing: 0.06em; font-weight: 600; color: #000000; }
         .accent-800 { letter-spacing: 0.06em; font-weight: 800; color: #E19EFB; }
@@ -132,7 +142,7 @@ function Home() {
             </p>
           </div>
         </div>
-        <StartSpeakButton />
+        <StartSpeakButton onClick={handleStartClick} />
       </div>
     </div>
   );

@@ -4,7 +4,22 @@ function HomeTab() {
   return (
     <div className="home-tab-wrap">
       <style>{`
-        .home-tab-wrap { position: absolute; top: 298px; left: 1114px; width: 354.99993896484375px; height: 517.0652465820312px; opacity: 1; overflow: hidden; border-radius: 30px; }
+        @keyframes homeTabFadeIn {
+          0% { opacity: 0; transform: translateY(28px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .home-tab-wrap {
+          position: absolute;
+          top: 298px;
+          left: 1114px;
+          width: 354.99993896484375px;
+          height: 517.0652465820312px;
+          opacity: 0;
+          overflow: hidden;
+          border-radius: 30px;
+          animation: homeTabFadeIn 1s ease-out 0.35s forwards;
+        }
         .home-tab__image { width: 100%; height: 100%; object-fit: cover; display: block; }
 
         @media (max-width: 1024px) {

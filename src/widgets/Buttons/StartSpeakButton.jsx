@@ -1,27 +1,67 @@
 import React from 'react';
+import { Button, Box } from '@mui/material';
 
 function StartSpeakButton({ onClick }) {
   return (
-    <div className="start-btn-abs">
-      <style>{`
-        .start-btn-abs { position: absolute; top: 640px; left: 485px; width: 399.2643737792969px; height: 104px; opacity: 1; }
-        .start-btn { width: 100%; height: 100%; border: none; cursor: pointer; border-radius: 15px; background: #E19EFB; display: flex; align-items: center; justify-content: center; }
-        .start-btn__label { width: 318px; height: 34px; margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-weight: 900; font-size: 32px; line-height: 100%; letter-spacing: 0; text-align: center; color: #FFFFFF; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
-
-        @media (max-width: 1024px) {
-          .start-btn-abs { position: static; width: calc(100% - 32px); max-width: 420px; height: 88px; margin: 24px auto 0 auto; }
-          .start-btn__label { font-size: 28px; }
-        }
-
-        @media (max-width: 640px) {
-          .start-btn-abs { max-width: 360px; height: 72px; }
-          .start-btn__label { font-size: 24px; }
-        }
-      `}</style>
-      <button type="button" className="start-btn" onClick={onClick}>
-        <span className="start-btn__label">Начните говорить</span>
-      </button>
-    </div>
+    <Box
+      sx={{
+        position: 'absolute',
+        top: '640px',
+        left: '485px',
+        width: '399.2643737792969px',
+        height: '104px',
+        opacity: 0,
+        animation: 'startButtonFadeIn 1s ease-out 0.5s forwards',
+        '@keyframes startButtonFadeIn': {
+          '0%': { opacity: 0, transform: 'translateY(20px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        '@media (max-width: 1024px)': {
+          position: 'static',
+          width: 'calc(100% - 32px)',
+          maxWidth: '420px',
+          height: '88px',
+          margin: '24px auto 0 auto',
+          animation: 'startButtonFadeIn 1s ease-out 0.5s forwards',
+        },
+        '@media (max-width: 640px)': {
+          maxWidth: '360px',
+          height: '72px',
+        },
+      }}
+    >
+      <Button
+        type="button"
+        onClick={onClick}
+        sx={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          borderRadius: '15px',
+          background: '#E19EFB',
+          color: '#FFFFFF',
+          fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+          fontWeight: 900,
+          fontSize: '32px',
+          lineHeight: '100%',
+          letterSpacing: 0,
+          textTransform: 'none',
+          whiteSpace: 'nowrap',
+          '&:hover': {
+            background: '#E19EFB',
+            opacity: 0.9,
+          },
+          '@media (max-width: 1024px)': {
+            fontSize: '28px',
+          },
+          '@media (max-width: 640px)': {
+            fontSize: '24px',
+          },
+        }}
+      >
+        Начните говорить
+      </Button>
+    </Box>
   );
 }
 
