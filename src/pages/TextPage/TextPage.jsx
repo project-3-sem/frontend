@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
 const sections = [
@@ -41,6 +42,8 @@ const sections = [
 ];
 
 function TextPage() {
+    const navigate = useNavigate();
+
     const pageStyle = {
         fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
         background: '#FFFFFF',
@@ -100,7 +103,12 @@ function TextPage() {
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        cursor: 'pointer'
+    };
+
+    const handleCardClick = (sectionId, textIndex) => {
+        navigate(`/text/${sectionId}/${textIndex}`);
     };
 
     const cardTitleStyle = {
@@ -181,7 +189,12 @@ function TextPage() {
                         </div>
                         <div className="tp-section__grid">
                             {section.texts.map((textItem, index) => (
-                                <div key={`${section.id}-${index}`} className="tp-card" style={cardStyle}>
+                                <div 
+                                    key={`${section.id}-${index}`} 
+                                    className="tp-card" 
+                                    style={cardStyle}
+                                    onClick={() => handleCardClick(section.id, index)}
+                                >
                                     <p style={cardTitleStyle}>{textItem.title}</p>
                                     <p style={cardBodyStyle}>{textItem.body}</p>
                                 </div>
