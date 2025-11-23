@@ -2,35 +2,37 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
+const loremText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nIaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenae';
+
 const sections = [
     {
         id: 'easy',
         title: 'Лёгкий',
         texts: [
-            { title: 'Love', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'Eat', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'Animals', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'Scool', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' }
+            { title: 'Love', body: loremText },
+            { title: 'Eat', body: loremText },
+            { title: 'Animals', body: loremText },
+            { title: 'Scool', body: loremText }
         ]
     },
     {
         id: 'medium',
         title: 'Средний',
         texts: [
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' }
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText }
         ]
     },
     {
         id: 'hard',
         title: 'Сложный',
         texts: [
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' },
-            { title: 'De Finibus', body: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et ...' }
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText },
+            { title: 'De Finibus', body: loremText }
         ]
     }
 ];
@@ -38,6 +40,20 @@ const sections = [
 function TextReading() {
     const { sectionId, textIndex } = useParams();
     const navigate = useNavigate();
+
+    const [isRecording, setIsRecording] = React.useState(false);
+    const [recordingTime, setRecordingTime] = React.useState(0);
+    const [mediaRecorder, setMediaRecorder] = React.useState(null);
+    const [hasRecording, setHasRecording] = React.useState(false);
+    const [isPlaying, setIsPlaying] = React.useState(false);
+    const [recordingBlob, setRecordingBlob] = React.useState(null);
+    const mediaStreamRef = React.useRef(null);
+    const audioRef = React.useRef(null);
+    const chunksRef = React.useRef([]);
+
+    React.useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [sectionId, textIndex]);
 
     const section = sections.find(s => s.id === sectionId);
     const textItem = section && section.texts[parseInt(textIndex)];
@@ -221,72 +237,259 @@ function TextReading() {
         alignItems: 'center'
     };
 
-    const textCardStyle = isCompact
+    const textCardStyle = {
+        width: '640px',
+        maxWidth: '100%',
+        height: isCompact ? 'auto' : '700px',
+        background: '#FDFDFE',
+        borderRadius: '18px',
+        boxShadow: '0 14px 40px rgba(0, 0, 0, 0.08)',
+        border: '2px solid #E19EFB',
+        padding: isCompact ? '24px 20px' : '32px 36px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+    };
+
+    const textHeaderStyle = {
+        fontWeight: 700,
+        fontSize: '20px',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: '#7A4AA5',
+        textAlign: 'center'
+    };
+
+    const textBodyStyle = {
+        margin: 0,
+        fontSize: '16px',
+        lineHeight: 1.6,
+        color: '#222222',
+        maxHeight: isCompact ? 'none' : '600px',
+        overflowY: isCompact ? 'visible' : 'auto'
+    };
+
+    const controlsStyle = isCompact
         ? {
-              width: '100%',
-              maxWidth: '340px',
-              background: '#FDFDFE',
-              borderRadius: '18px',
-              boxShadow: '0 14px 40px rgba(0, 0, 0, 0.08)',
-              border: '2px solid #E19EFB',
-              padding: '24px 20px 28px',
-              boxSizing: 'border-box',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '16px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+              flexWrap: 'wrap'
           }
         : {
-              width: '640px',
-              maxWidth: '100%',
-              background: '#FDFDFE',
-              borderRadius: '18px',
-              boxShadow: '0 14px 40px rgba(0, 0, 0, 0.08)',
-              border: '2px solid #E19EFB',
-              padding: '28px 36px 32px',
-              boxSizing: 'border-box',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '16px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+              flexWrap: 'wrap'
           };
 
-    const textHeaderStyle = isCompact
+    const recordingControlsStyle = {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: isCompact ? '8px' : '12px',
+        marginTop: '16px',
+        paddingTop: '12px',
+        borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        flexWrap: isCompact ? 'wrap' : 'nowrap'
+    };
+
+    const reviewButtonStyle = isCompact
         ? {
-              fontWeight: 700,
-              fontSize: '16px',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: '#7A4AA5',
-              textAlign: 'center'
+              flex: isCompact ? 1 : 'none',
+              minWidth: '100px',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#E19EFB',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+              transition: 'opacity 0.2s ease'
           }
         : {
-              fontWeight: 700,
-              fontSize: '20px',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: '#7A4AA5',
-              textAlign: 'center'
-          };
-
-    const textBodyStyle = isCompact
-        ? {
-              margin: 0,
+              flex: 1,
+              minWidth: '140px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#E19EFB',
+              color: '#FFFFFF',
+              cursor: 'pointer',
               fontSize: '14px',
-              lineHeight: 1.5,
-              color: '#222222',
-              maxHeight: '300px',
-              overflowY: 'auto'
+              fontWeight: 600,
+              transition: 'opacity 0.2s ease'
+          };
+
+    const buttonStyle = isCompact
+        ? {
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#E19EFB',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              transition: 'opacity 0.2s ease',
+              fontWeight: 'bold',
+              flexShrink: 0
           }
         : {
-              margin: 0,
-              fontSize: '16px',
-              lineHeight: 1.6,
-              color: '#222222',
-              maxHeight: '380px',
-              overflowY: 'auto'
+              width: '44px',
+              height: '44px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#E19EFB',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              transition: 'opacity 0.2s ease',
+              fontWeight: 'bold'
           };
+
+    const timerStyle = {
+        fontWeight: 600,
+        fontSize: isCompact ? '13px' : '14px',
+        color: isRecording ? '#E19EFB' : '#666666',
+        minWidth: isCompact ? '50px' : '60px',
+        textAlign: 'center'
+    };
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    React.useEffect(() => {
+        let interval;
+        if (isRecording) {
+            interval = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isRecording]);
+
+    const handleStartRecording = async () => {
+        try {
+            chunksRef.current = [];
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            const recorder = new MediaRecorder(stream);
+            
+            recorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    chunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstart = () => {
+                setIsRecording(true);
+                setRecordingTime(0);
+            };
+
+            recorder.onstop = () => {
+                setIsRecording(false);
+                setHasRecording(true);
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Создаём Blob из записанных chunks
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                setRecordingBlob(blob);
+                
+                // Создаём URL для воспроизведения
+                const url = URL.createObjectURL(blob);
+                if (audioRef.current) {
+                    audioRef.current.src = url;
+                }
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            alert('Ошибка доступа к микрофону');
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorder) {
+            mediaRecorder.stop();
+        }
+    };
+
+    const handlePlayRecording = () => {
+        if (audioRef.current) {
+            if (isPlaying) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+            } else {
+                audioRef.current.play();
+                setIsPlaying(true);
+            }
+        }
+    };
+
+    const handleAudioEnd = () => {
+        setIsPlaying(false);
+    };
+
+    const handleDeleteRecording = () => {
+        setHasRecording(false);
+        setRecordingTime(0);
+        setIsRecording(false);
+        setIsPlaying(false);
+        setRecordingBlob(null);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+        }
+    };
+
+    const handleSendForReview = () => {
+        if (recordingBlob) {
+            // TODO: Отправить recordingBlob на бэкенд
+            console.log('Отправка записи на проверку:', recordingBlob);
+            navigate('/processing');
+        }
+    };
 
     return (
         <div style={pageStyle}>
+            <style>{`
+                ::-webkit-scrollbar {
+                    width: 6px;
+                }
+                ::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                ::-webkit-scrollbar-thumb {
+                    background: #D0D0D0;
+                    border-radius: 3px;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                    background: #A0A0A0;
+                }
+            `}</style>
             <Header background="#FFFFFF" animated={false} />
             <div style={backgroundWrapperStyle}></div>
             <div style={tornadoStyle}></div>
@@ -299,12 +502,105 @@ function TextReading() {
                 <div style={textCardStyle}>
                     <div style={textHeaderStyle}>Текст для чтения</div>
                     <p style={textBodyStyle}>{textItem.body}</p>
+                    <audio 
+                        ref={audioRef} 
+                        onEnded={handleAudioEnd}
+                        style={{ display: 'none' }}
+                    />
+                    {!hasRecording ? (
+                        <div style={controlsStyle}>
+                            <button 
+                                style={buttonStyle} 
+                                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                title={isRecording ? "Stop recording" : "Start recording"}
+                            >
+                                {isRecording ? '⏹' : '▶'}
+                            </button>
+                            <span style={timerStyle}>{formatTime(recordingTime)}</span>
+                            <button 
+                                style={{...buttonStyle, background: '#CCC'}} 
+                                onClick={handleDeleteRecording}
+                                title="Clear"
+                                disabled={!isRecording}
+                            >
+                                🗑
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={recordingControlsStyle}>
+                            <button 
+                                style={{
+                                    ...reviewButtonStyle,
+                                    minWidth: '160px',
+                                    background: '#4A90E2'
+                                }}
+                                onClick={handlePlayRecording}
+                                title={isPlaying ? "Пауза" : "Прослушать запись"}
+                            >
+                                {isPlaying ? '⏸ Пауза' : '▶ Прослушать'}
+                            </button>
+                            <button style={reviewButtonStyle} onClick={handleSendForReview}>
+                                Отправить на проверку
+                            </button>
+                            <button 
+                                style={{...reviewButtonStyle, background: '#EEE', color: '#666'}}
+                                onClick={handleDeleteRecording}
+                                title="Удалить запись"
+                            >
+                                ✕ Удалить
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
             <div style={compactContentStyle}>
                 <div style={textCardStyle}>
                     <div style={textHeaderStyle}>Текст для чтения</div>
                     <p style={textBodyStyle}>{textItem.body}</p>
+                    {!hasRecording ? (
+                        <div style={controlsStyle}>
+                            <button 
+                                style={buttonStyle} 
+                                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                title={isRecording ? "Stop recording" : "Start recording"}
+                            >
+                                {isRecording ? '⏹' : '▶'}
+                            </button>
+                            <span style={timerStyle}>{formatTime(recordingTime)}</span>
+                            <button 
+                                style={{...buttonStyle, background: '#CCC'}} 
+                                onClick={handleDeleteRecording}
+                                title="Clear"
+                                disabled={!isRecording}
+                            >
+                                🗑
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={recordingControlsStyle}>
+                            <button 
+                                style={{
+                                    ...reviewButtonStyle,
+                                    minWidth: '160px',
+                                    background: '#4A90E2'
+                                }}
+                                onClick={handlePlayRecording}
+                                title={isPlaying ? "Пауза" : "Прослушать запись"}
+                            >
+                                {isPlaying ? '⏸ Пауза' : '▶ Прослушать'}
+                            </button>
+                            <button style={reviewButtonStyle} onClick={handleSendForReview}>
+                                Отправить на проверку
+                            </button>
+                            <button 
+                                style={{...reviewButtonStyle, background: '#EEE', color: '#666'}}
+                                onClick={handleDeleteRecording}
+                                title="Удалить запись"
+                            >
+                                ✕ Удалить
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
