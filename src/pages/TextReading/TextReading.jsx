@@ -270,27 +270,15 @@ function TextReading() {
         overflowY: isCompact ? 'visible' : 'auto'
     };
 
-    const controlsStyle = isCompact
-        ? {
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '16px',
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-              flexWrap: 'wrap'
-          }
-        : {
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '12px',
-              marginTop: '16px',
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-              flexWrap: 'wrap'
-          };
+    const controlsStyle = {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: '16px',
+        paddingTop: '12px',
+        borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+        width: '100%'
+    };
 
     const recordingControlsStyle = {
         display: 'flex',
@@ -304,73 +292,72 @@ function TextReading() {
         flexWrap: isCompact ? 'wrap' : 'nowrap'
     };
 
-    const reviewButtonStyle = isCompact
-        ? {
-              flex: isCompact ? 1 : 'none',
-              minWidth: '100px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#E19EFB',
-              color: '#FFFFFF',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: 600,
-              transition: 'opacity 0.2s ease'
-          }
-        : {
-              flex: 1,
-              minWidth: '140px',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#E19EFB',
-              color: '#FFFFFF',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 600,
-              transition: 'opacity 0.2s ease'
-          };
+    const reviewButtonStyle = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: isCompact ? '7px 14px' : '8px 18px',
+        borderRadius: 16,
+        border: '1px solid rgba(0, 0, 0, 0.06)',
+        cursor: 'pointer',
+        fontSize: isCompact ? '13px' : '14px',
+        fontWeight: 600,
+        fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+        background: '#F9F5FF',
+        boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.7) inset',
+        transition: 'background-color 0.15s ease, opacity 0.15s ease'
+    };
 
-    const buttonStyle = isCompact
-        ? {
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#E19EFB',
-              color: '#FFFFFF',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-              transition: 'opacity 0.2s ease',
-              fontWeight: 'bold',
-              flexShrink: 0
-          }
-        : {
-              width: '44px',
-              height: '44px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#E19EFB',
-              color: '#FFFFFF',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px',
-              transition: 'opacity 0.2s ease',
-              fontWeight: 'bold'
-          };
+    const recordBarStyle = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: '#F4F0F8',
+        borderRadius: '14px',
+        padding: isCompact ? '4px 6px' : '5px 8px',
+        border: '1px solid rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.6) inset',
+        gap: 0
+    };
+
+    const recordButtonStyle = {
+        border: 'none',
+        background: '#E0DADF',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: isCompact ? '38px' : '40px',
+        height: isCompact ? '32px' : '34px',
+        padding: 0,
+        outline: 'none'
+    };
+
+    const playButtonStyle = {
+        ...recordButtonStyle,
+        borderRadius: '10px',
+        background: isRecording ? '#D4CED5' : '#E0DADF'
+    };
 
     const timerStyle = {
+        padding: isCompact ? '0 8px' : '0 10px',
         fontWeight: 600,
-        fontSize: isCompact ? '13px' : '14px',
-        color: isRecording ? '#E19EFB' : '#666666',
-        minWidth: isCompact ? '50px' : '60px',
-        textAlign: 'center'
+        fontSize: isCompact ? '12px' : '13px',
+        color: '#222222',
+        minWidth: isCompact ? '52px' : '60px',
+        textAlign: 'center',
+        background: '#F4F0F8'
+    };
+
+    const redDotStyle = {
+        width: isCompact ? '7px' : '8px',
+        height: isCompact ? '7px' : '8px',
+        borderRadius: '50%',
+        backgroundColor: '#E53935',
+        marginRight: isCompact ? '4px' : '6px',
+        opacity: 1,
+        animation: isRecording ? 'recordBlink 1s ease-in-out infinite' : 'none'
     };
 
     const formatTime = (seconds) => {
@@ -476,18 +463,9 @@ function TextReading() {
     return (
         <div style={pageStyle}>
             <style>{`
-                ::-webkit-scrollbar {
-                    width: 6px;
-                }
-                ::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                ::-webkit-scrollbar-thumb {
-                    background: #D0D0D0;
-                    border-radius: 3px;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                    background: #A0A0A0;
+                @keyframes recordBlink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.15; }
                 }
             `}</style>
             <Header background="#FFFFFF" animated={false} />
@@ -509,45 +487,53 @@ function TextReading() {
                     />
                     {!hasRecording ? (
                         <div style={controlsStyle}>
-                            <button 
-                                style={buttonStyle} 
-                                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                                title={isRecording ? "Stop recording" : "Start recording"}
-                            >
-                                {isRecording ? '⏹' : '▶'}
-                            </button>
-                            <span style={timerStyle}>{formatTime(recordingTime)}</span>
-                            <button 
-                                style={{...buttonStyle, background: '#CCC'}} 
-                                onClick={handleDeleteRecording}
-                                title="Clear"
-                                disabled={!isRecording}
-                            >
-                                🗑
-                            </button>
+                            <div style={recordBarStyle}>
+                                <button
+                                    style={playButtonStyle}
+                                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                    title={isRecording ? 'Остановить запись' : 'Начать запись'}
+                                >
+                                    {isRecording ? '⏹' : '▶'}
+                                </button>
+                                <span style={timerStyle}>{formatTime(recordingTime)}</span>
+                                <span style={redDotStyle}></span>
+                            </div>
                         </div>
                     ) : (
                         <div style={recordingControlsStyle}>
-                            <button 
+                            <button
                                 style={{
                                     ...reviewButtonStyle,
-                                    minWidth: '160px',
-                                    background: '#4A90E2'
+                                    background: '#E1DDE8',
+                                    minWidth: isCompact ? '150px' : '170px'
                                 }}
                                 onClick={handlePlayRecording}
-                                title={isPlaying ? "Пауза" : "Прослушать запись"}
+                                title={isPlaying ? 'Пауза' : 'Прослушать запись'}
                             >
-                                {isPlaying ? '⏸ Пауза' : '▶ Прослушать'}
+                                <span style={{ fontSize: 14 }}>▶</span>
+                                <span>{isPlaying ? 'Пауза' : 'Прослушать'}</span>
                             </button>
-                            <button style={reviewButtonStyle} onClick={handleSendForReview}>
+                            <button
+                                style={{
+                                    ...reviewButtonStyle,
+                                    minWidth: isCompact ? '160px' : '190px'
+                                }}
+                                onClick={handleSendForReview}
+                            >
                                 Отправить на проверку
                             </button>
-                            <button 
-                                style={{...reviewButtonStyle, background: '#EEE', color: '#666'}}
+                            <button
+                                style={{
+                                    ...reviewButtonStyle,
+                                    background: '#F4F4F4',
+                                    minWidth: isCompact ? '130px' : '150px',
+                                    color: '#555555'
+                                }}
                                 onClick={handleDeleteRecording}
                                 title="Удалить запись"
                             >
-                                ✕ Удалить
+                                <span style={{ fontSize: 14 }}>✕</span>
+                                <span>Удалить</span>
                             </button>
                         </div>
                     )}
@@ -559,45 +545,53 @@ function TextReading() {
                     <p style={textBodyStyle}>{textItem.body}</p>
                     {!hasRecording ? (
                         <div style={controlsStyle}>
-                            <button 
-                                style={buttonStyle} 
-                                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                                title={isRecording ? "Stop recording" : "Start recording"}
-                            >
-                                {isRecording ? '⏹' : '▶'}
-                            </button>
-                            <span style={timerStyle}>{formatTime(recordingTime)}</span>
-                            <button 
-                                style={{...buttonStyle, background: '#CCC'}} 
-                                onClick={handleDeleteRecording}
-                                title="Clear"
-                                disabled={!isRecording}
-                            >
-                                🗑
-                            </button>
+                            <div style={recordBarStyle}>
+                                <button
+                                    style={playButtonStyle}
+                                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                    title={isRecording ? 'Остановить запись' : 'Начать запись'}
+                                >
+                                    {isRecording ? '⏹' : '▶'}
+                                </button>
+                                <span style={timerStyle}>{formatTime(recordingTime)}</span>
+                                <span style={redDotStyle}></span>
+                            </div>
                         </div>
                     ) : (
                         <div style={recordingControlsStyle}>
-                            <button 
+                            <button
                                 style={{
                                     ...reviewButtonStyle,
-                                    minWidth: '160px',
-                                    background: '#4A90E2'
+                                    background: '#E1DDE8',
+                                    minWidth: isCompact ? '150px' : '170px'
                                 }}
                                 onClick={handlePlayRecording}
-                                title={isPlaying ? "Пауза" : "Прослушать запись"}
+                                title={isPlaying ? 'Пауза' : 'Прослушать запись'}
                             >
-                                {isPlaying ? '⏸ Пауза' : '▶ Прослушать'}
+                                <span style={{ fontSize: 14 }}>▶</span>
+                                <span>{isPlaying ? 'Пауза' : 'Прослушать'}</span>
                             </button>
-                            <button style={reviewButtonStyle} onClick={handleSendForReview}>
+                            <button
+                                style={{
+                                    ...reviewButtonStyle,
+                                    minWidth: isCompact ? '160px' : '190px'
+                                }}
+                                onClick={handleSendForReview}
+                            >
                                 Отправить на проверку
                             </button>
-                            <button 
-                                style={{...reviewButtonStyle, background: '#EEE', color: '#666'}}
+                            <button
+                                style={{
+                                    ...reviewButtonStyle,
+                                    background: '#F4F4F4',
+                                    minWidth: isCompact ? '130px' : '150px',
+                                    color: '#555555'
+                                }}
                                 onClick={handleDeleteRecording}
                                 title="Удалить запись"
                             >
-                                ✕ Удалить
+                                <span style={{ fontSize: 14 }}>✕</span>
+                                <span>Удалить</span>
                             </button>
                         </div>
                     )}

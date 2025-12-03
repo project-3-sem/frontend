@@ -36,9 +36,10 @@ function RecordingResults() {
     const pageStyle = {
         fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
         background: '#FFFFFF',
-        height: '100vh',
+        minHeight: '100vh',
         position: 'relative',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column'
     };
@@ -48,13 +49,14 @@ function RecordingResults() {
         zIndex: 1,
         maxWidth: '1320px',
         margin: '0 auto',
-        padding: '20px',
+        padding: isCompact ? '32px 16px 72px' : '40px 24px 96px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         flex: 1,
-        width: '100%'
+        width: '100%',
+        boxSizing: 'border-box'
     };
 
     const titleStyle = {
@@ -382,21 +384,6 @@ function RecordingResults() {
 
     return (
         <div style={pageStyle}>
-            <style>{`
-                ::-webkit-scrollbar {
-                    width: 6px;
-                }
-                ::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                ::-webkit-scrollbar-thumb {
-                    background: #D0D0D0;
-                    border-radius: 3px;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                    background: #A0A0A0;
-                }
-            `}</style>
             <Header background="#FFFFFF" animated={false} />
             <div style={backgroundWrapperStyle}></div>
             <div style={tornadoStyle}></div>

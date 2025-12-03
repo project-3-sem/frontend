@@ -5,11 +5,9 @@ function StartSpeakButton({ onClick }) {
   return (
     <Box
       sx={{
-        position: 'absolute',
-        top: '640px',
-        left: '485px',
-        width: '399.2643737792969px',
-        height: '104px',
+        width: '100%',
+        maxWidth: '420px',
+        height: '96px',
         opacity: 0,
         animation: 'startButtonFadeIn 1s ease-out 0.5s forwards',
         '@keyframes startButtonFadeIn': {
@@ -17,12 +15,7 @@ function StartSpeakButton({ onClick }) {
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
         '@media (max-width: 1024px)': {
-          position: 'static',
-          width: 'calc(100% - 32px)',
-          maxWidth: '420px',
           height: '88px',
-          margin: '24px auto 0 auto',
-          animation: 'startButtonFadeIn 1s ease-out 0.5s forwards',
         },
         '@media (max-width: 640px)': {
           maxWidth: '360px',
@@ -40,7 +33,8 @@ function StartSpeakButton({ onClick }) {
           borderRadius: '15px',
           background: '#E19EFB',
           color: '#FFFFFF',
-          fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+          fontFamily:
+            'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
           fontWeight: 900,
           fontSize: '32px',
           lineHeight: '100%',
