@@ -2,6 +2,9 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const TEXTS_ENDPOINT = `${API_BASE_URL}/texts/`;
+
 const loremText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nIaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenae';
 
 const sections = [
@@ -41,6 +44,9 @@ function TextReading() {
     const { sectionId, textIndex } = useParams();
     const navigate = useNavigate();
 
+    const [sectionsData, setSectionsData] = React.useState(null);
+    const [isLoadingTexts, setIsLoadingTexts] = React.useState(true);
+    const [loadError, setLoadError] = React.useState(null);
     const [isRecording, setIsRecording] = React.useState(false);
     const [recordingTime, setRecordingTime] = React.useState(0);
     const [mediaRecorder, setMediaRecorder] = React.useState(null);
@@ -55,15 +61,78 @@ function TextReading() {
         window.scrollTo(0, 0);
     }, [sectionId, textIndex]);
 
-    const section = sections.find(s => s.id === sectionId);
-    const textItem = section && section.texts[parseInt(textIndex)];
+    React.useEffect(() => {
+        const cached = sessionStorage.getItem('lingai_sections');
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length) {
+                    setSectionsData(parsed);
+                    setIsLoadingTexts(false);
+                    return;
+                }
+            } catch (e) {
+                console.error('Failed to parse cached sections on reading page', e);
+            }
+        }
+
+        const fetchSections = async () => {
+            try {
+                setIsLoadingTexts(true);
+                setLoadError(null);
+
+                const response = await fetch(TEXTS_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error(`Failed to load texts: ${response.status}`);
+                }
+
+                const payload = await response.json();
+                const remoteSections = Array.isArray(payload?.sections)
+                    ? payload.sections
+                    : Array.isArray(payload)
+                        ? payload
+                        : [];
+
+                if (remoteSections.length) {
+                    setSectionsData(remoteSections);
+                    sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
+                } else {
+                    // если бэк вернул пустой массив — используем локальные заглушки
+                    setSectionsData(sections);
+                    setLoadError('Пустой ответ от сервера, показаны примеры.');
+                }
+            } catch (e) {
+                console.error('Error loading sections on reading page', e);
+                setSectionsData(sections);
+                setLoadError('Не удалось загрузить текст с сервера, показан пример.');
+            } finally {
+                setIsLoadingTexts(false);
+            }
+        };
+
+        fetchSections();
+    }, []);
+
+    const section = sectionsData?.find((s) => String(s.id) === String(sectionId));
+    const textItem = section?.texts?.[parseInt(textIndex, 10)];
+
+    if (isLoadingTexts) {
+        return (
+            <div>
+                <Header background="#FFFFFF" animated={false} />
+                <div style={{ padding: '48px', textAlign: 'center' }}>
+                    <p>Загружаем текст...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!textItem) {
         return (
             <div>
                 <Header background="#FFFFFF" animated={false} />
                 <div style={{ padding: '48px', textAlign: 'center' }}>
-                    <p>Текст не найден</p>
+                    <p>{loadError || 'Текст не найден'}</p>
                     <button onClick={() => navigate('/texts')}>Вернуться к выбору текстов</button>
                 </div>
             </div>

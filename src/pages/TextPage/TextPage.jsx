@@ -2,7 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
-const sections = [
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const TEXTS_ENDPOINT = `${API_BASE_URL}/texts/`;
+
+const FALLBACK_SECTIONS = [
     {
         id: 'easy',
         title: 'Лёгкий',
@@ -43,6 +46,9 @@ const sections = [
 
 function TextPage() {
     const navigate = useNavigate();
+    const [sections, setSections] = React.useState(FALLBACK_SECTIONS);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState(null);
 
     const pageStyle = {
         fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
@@ -128,12 +134,76 @@ function TextPage() {
         color: '#2B303A'
     };
 
+    const loadingTextStyle = {
+        marginTop: '8px',
+        fontSize: '14px',
+        color: 'rgba(31, 31, 31, 0.6)'
+    };
+
+    const errorTextStyle = {
+        marginTop: '8px',
+        fontSize: '13px',
+        color: '#D32F2F'
+    };
+
+    React.useEffect(() => {
+        const cached = sessionStorage.getItem('lingai_sections');
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length) {
+                    setSections(parsed);
+                    return;
+                }
+            } catch (e) {
+                console.error('Failed to parse cached sections', e);
+            }
+        }
+
+        const fetchSections = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                const response = await fetch(TEXTS_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error(`Failed to load texts: ${response.status}`);
+                }
+
+                const payload = await response.json();
+                const remoteSections = Array.isArray(payload?.sections)
+                    ? payload.sections
+                    : Array.isArray(payload)
+                        ? payload
+                        : [];
+
+                if (remoteSections.length) {
+                    setSections(remoteSections);
+                    sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
+                } else {
+                    console.warn('Texts response is empty, using fallback sections');
+                    setSections(FALLBACK_SECTIONS);
+                }
+            } catch (e) {
+                console.error('Error loading sections from backend', e);
+                setError('Не удалось загрузить тексты. Показаны примеры.');
+                setSections(FALLBACK_SECTIONS);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSections();
+    }, []);
+
     return (
         <div style={pageStyle}>
             <Header background="#FFFFFF" animated={false} />
             <div style={contentStyle}>
                 <h1 style={titleStyle}>Выберите текст</h1>
                 <p style={subtitleStyle}>Подберите подходящий по сложности и теме текст для тренировки произношения.</p>
+                {isLoading && <p style={loadingTextStyle}>Загружаем тексты...</p>}
+                {error && !isLoading && <p style={errorTextStyle}>{error}</p>}
                 <div style={dividerStyle}></div>
 
                 <style>{`
