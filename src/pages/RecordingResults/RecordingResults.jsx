@@ -219,33 +219,40 @@ function RecordingResults() {
     const controlsStyle = {
         display: 'flex',
         justifyContent: 'center',
-        gap: '12px',
+        gap: isCompact ? '10px' : '16px',
         marginTop: '24px',
         flexWrap: 'wrap'
     };
 
-    const buttonStyle = {
-        padding: '12px 24px',
-        borderRadius: '8px',
-        border: 'none',
-        fontWeight: 600,
-        fontSize: '14px',
+    const pillButtonBase = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: isCompact ? '9px 16px' : '10px 22px',
+        borderRadius: 18,
+        border: '1px solid rgba(0, 0, 0, 0.06)',
         cursor: 'pointer',
-        transition: 'opacity 0.2s ease'
+        fontSize: isCompact ? '13px' : '14px',
+        fontWeight: 600,
+        fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+        boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.7) inset',
+        transition: 'background-color 0.15s ease, opacity 0.15s ease'
     };
 
     const primaryButtonStyle = {
-        ...buttonStyle,
+        ...pillButtonBase,
         background: '#E19EFB',
         color: '#FFFFFF',
-        minWidth: '180px'
+        minWidth: isCompact ? '190px' : '210px'
     };
 
     const secondaryButtonStyle = {
-        ...buttonStyle,
-        background: '#EEE',
-        color: '#666',
-        minWidth: '120px'
+        ...pillButtonBase,
+        background: '#F4F4F4',
+        color: '#555555',
+        minWidth: isCompact ? '130px' : '150px'
     };
 
     const backgroundWrapperStyle = isCompact
@@ -405,13 +412,15 @@ function RecordingResults() {
                             style={primaryButtonStyle}
                             onClick={() => navigate(-1)}
                         >
-                            ▶ Перечитать ошибки
+                            <span style={{ fontSize: 14 }}>▶</span>
+                            <span>Перечитать ошибки</span>
                         </button>
                         <button
                             style={secondaryButtonStyle}
                             onClick={() => navigate('/texts')}
                         >
-                            ✕ Выход
+                            <span style={{ fontSize: 16 }}>✕</span>
+                            <span>Выход</span>
                         </button>
                     </div>
                 </div>
