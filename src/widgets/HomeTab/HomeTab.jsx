@@ -10,24 +10,33 @@ function HomeTab() {
         }
 
         .home-tab-wrap {
-          position: absolute;
-          top: 298px;
-          left: 1114px;
-          width: 354.99993896484375px;
-          height: 517.0652465820312px;
-          opacity: 0;
-          overflow: hidden;
+          flex: 0 0 320px;
+          max-width: 360px;
           border-radius: 30px;
+          overflow: hidden;
+          opacity: 0;
           animation: homeTabFadeIn 1s ease-out 0.35s forwards;
         }
-        .home-tab__image { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-        @media (max-width: 1024px) {
-          .home-tab-wrap { position: static; width: 280px; height: 410px; margin: 32px auto 0 auto; border-radius: 24px; }
+        .home-tab__image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
         }
 
-        @media (max-width: 640px) {
-          .home-tab-wrap { width: 260px; height: 380px; margin-top: 24px; border-radius: 20px; }
+        @media (max-width: 768px) {
+          .home-tab-wrap {
+            width: 100%;
+            max-width: 320px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .home-tab-wrap {
+            max-width: 280px;
+            border-radius: 24px;
+          }
         }
       `}</style>
       <img className="home-tab__image" src="/hometab.png" alt="Home tab" />
