@@ -224,35 +224,65 @@ function RecordingResults() {
         flexWrap: 'wrap'
     };
 
-    const pillButtonBase = {
-        display: 'inline-flex',
+    const primaryButtonStyle = {
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        padding: isCompact ? '9px 16px' : '10px 22px',
-        borderRadius: 18,
-        border: '1px solid rgba(0, 0, 0, 0.06)',
+        padding: isCompact ? '5px 14px' : '6px 18px',
+        borderRadius: '10px',
+        border: '1.5px solid rgba(255, 255, 255, 0.8)',
         cursor: 'pointer',
-        fontSize: isCompact ? '13px' : '14px',
-        fontWeight: 600,
-        fontFamily: 'inherit',
-        whiteSpace: 'nowrap',
-        boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.7) inset',
-        transition: 'background-color 0.15s ease, opacity 0.15s ease'
-    };
-
-    const primaryButtonStyle = {
-        ...pillButtonBase,
         background: '#E19EFB',
         color: '#FFFFFF',
-        minWidth: isCompact ? '190px' : '210px'
+        fontFamily: 'inherit',
+        fontWeight: 700,
+        fontSize: isCompact ? '11px' : '12px',
+        lineHeight: 1.1,
+        textAlign: 'center',
+        minWidth: isCompact ? '160px' : '180px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        overflow: 'hidden'
+    };
+
+    const primaryButtonTextStyle = {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0px'
+    };
+
+    const primaryButtonIconStyle = {
+        position: 'absolute',
+        bottom: '3px',
+        right: '6px',
+        width: '14px',
+        height: '14px',
+        opacity: 0.9
     };
 
     const secondaryButtonStyle = {
-        ...pillButtonBase,
-        background: '#F4F4F4',
-        color: '#555555',
-        minWidth: isCompact ? '130px' : '150px'
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: isCompact ? '5px 14px' : '6px 18px',
+        borderRadius: '10px',
+        border: '1.5px solid rgba(255, 255, 255, 0.8)',
+        cursor: 'pointer',
+        background: '#E19EFB',
+        color: '#FFFFFF',
+        fontFamily: 'inherit',
+        fontWeight: 700,
+        fontSize: isCompact ? '11px' : '12px',
+        lineHeight: 1.1,
+        textAlign: 'center',
+        minWidth: isCompact ? '100px' : '120px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
     };
 
     const backgroundWrapperStyle = isCompact
@@ -411,15 +441,48 @@ function RecordingResults() {
                         <button
                             style={primaryButtonStyle}
                             onClick={() => navigate(-1)}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                            }}
                         >
-                            <span style={{ fontSize: 14 }}>▶</span>
-                            <span>Перечитать ошибки</span>
+                            <div style={primaryButtonTextStyle}>
+                                <span>Перечитать</span>
+                                <span>предложения с</span>
+                                <span>ошибками</span>
+                            </div>
+                            <svg 
+                                style={primaryButtonIconStyle}
+                                viewBox="0 0 24 24" 
+                                fill="none" 
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path 
+                                    d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" 
+                                    fill="white" 
+                                    opacity="0.9"
+                                />
+                                <line x1="7" y1="10" x2="17" y2="10" stroke="white" strokeWidth="1.5" opacity="0.7"/>
+                                <line x1="7" y1="13" x2="17" y2="13" stroke="white" strokeWidth="1.5" opacity="0.7"/>
+                                <line x1="7" y1="16" x2="17" y2="16" stroke="white" strokeWidth="1.5" opacity="0.7"/>
+                            </svg>
                         </button>
                         <button
                             style={secondaryButtonStyle}
                             onClick={() => navigate('/texts')}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                            }}
                         >
-                            <span style={{ fontSize: 16 }}>✕</span>
                             <span>Выход</span>
                         </button>
                     </div>

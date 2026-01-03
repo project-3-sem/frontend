@@ -62,59 +62,124 @@ function TextReading() {
     }, [sectionId, textIndex]);
 
     React.useEffect(() => {
+        // Загружаем данные с бэкенда
+        // Загружаем кэш для мгновенного отображения (опционально)
         const cached = sessionStorage.getItem('lingai_sections');
+        let cachedData = null;
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed) && parsed.length) {
+                    cachedData = parsed;
                     setSectionsData(parsed);
-                    setIsLoadingTexts(false);
-                    return;
                 }
             } catch (e) {
                 console.error('Failed to parse cached sections on reading page', e);
             }
         }
 
+        // Всегда запрашиваем свежие данные с бэкенда
         const fetchSections = async () => {
             try {
                 setIsLoadingTexts(true);
                 setLoadError(null);
 
-                const response = await fetch(TEXTS_ENDPOINT);
+                console.log('Fetching texts from:', TEXTS_ENDPOINT);
+                const response = await fetch(TEXTS_ENDPOINT, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
                 if (!response.ok) {
-                    throw new Error(`Failed to load texts: ${response.status}`);
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`Failed to load texts: ${response.status} ${response.statusText}`);
                 }
 
-                const payload = await response.json();
-                const remoteSections = Array.isArray(payload?.sections)
-                    ? payload.sections
-                    : Array.isArray(payload)
-                        ? payload
-                        : [];
+                const texts = await response.json();
+                console.log('Received texts from backend:', texts);
+                
+                // Преобразуем массив текстов в формат секций по сложности
+                const difficultyMap = {
+                    'easy': { id: 'easy', title: 'Лёгкий', texts: [] },
+                    'medium': { id: 'medium', title: 'Средний', texts: [] },
+                    'hard': { id: 'hard', title: 'Сложный', texts: [] }
+                };
+
+                if (Array.isArray(texts) && texts.length > 0) {
+                    texts.forEach(text => {
+                        if (difficultyMap[text.difficulty]) {
+                            difficultyMap[text.difficulty].texts.push({
+                                id: text.id,
+                                title: text.title,
+                                body: text.body
+                            });
+                        }
+                    });
+                }
+
+                const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
+                console.log('Processed sections:', remoteSections);
+                console.log('Sections count:', remoteSections.length);
 
                 if (remoteSections.length) {
                     setSectionsData(remoteSections);
                     sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
                 } else {
-                    // если бэк вернул пустой массив — используем локальные заглушки
-                    setSectionsData(sections);
-                    setLoadError('Пустой ответ от сервера, показаны примеры.');
+                    console.warn('Empty response from backend');
+                    // если бэк вернул пустой массив — используем кэш или локальные заглушки
+                    if (cachedData) {
+                        console.log('Using cached data');
+                        setSectionsData(cachedData);
+                    } else {
+                        console.log('Using fallback sections');
+                        setSectionsData(sections);
+                        setLoadError('Пустой ответ от сервера, показаны примеры.');
+                    }
                 }
             } catch (e) {
                 console.error('Error loading sections on reading page', e);
-                setSectionsData(sections);
-                setLoadError('Не удалось загрузить текст с сервера, показан пример.');
+                // При ошибке используем кэш, если он есть, иначе fallback
+                if (cachedData) {
+                    console.log('Error occurred, using cached data');
+                    setSectionsData(cachedData);
+                } else {
+                    console.log('Error occurred, using fallback sections');
+                    setSectionsData(sections);
+                    setLoadError('Не удалось загрузить текст с сервера, показан пример.');
+                }
             } finally {
                 setIsLoadingTexts(false);
             }
         };
 
         fetchSections();
-    }, []);
+    }, [sectionId, textIndex]);
 
     const section = sectionsData?.find((s) => String(s.id) === String(sectionId));
     const textItem = section?.texts?.[parseInt(textIndex, 10)];
+
+    // Отладочная информация (логируем только при наличии данных)
+    if (sectionsData) {
+        console.log('Sections data:', sectionsData);
+        console.log('Looking for sectionId:', sectionId);
+        console.log('Found section:', section);
+        console.log('Looking for textIndex:', textIndex);
+        console.log('Found textItem:', textItem);
+    }
+
+    // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ДО РАННИХ RETURN'ОВ
+    React.useEffect(() => {
+        let interval;
+        if (isRecording) {
+            interval = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isRecording]);
 
     if (isLoadingTexts) {
         return (
@@ -132,8 +197,35 @@ function TextReading() {
             <div>
                 <Header background="#FFFFFF" animated={false} />
                 <div style={{ padding: '48px', textAlign: 'center' }}>
-                    <p>{loadError || 'Текст не найден'}</p>
-                    <button onClick={() => navigate('/texts')}>Вернуться к выбору текстов</button>
+                    <p style={{ marginBottom: '16px', fontSize: '16px', color: '#666' }}>
+                        {loadError || 'Текст не найден'}
+                    </p>
+                    {sectionsData && (
+                        <div style={{ marginBottom: '16px', fontSize: '14px', color: '#999' }}>
+                            <p>Доступные секции: {sectionsData.map(s => s.id).join(', ')}</p>
+                            {section && (
+                                <p>Текстов в секции "{section.title}": {section.texts?.length || 0}</p>
+                            )}
+                            {!section && (
+                                <p>Секция с id "{sectionId}" не найдена</p>
+                            )}
+                        </div>
+                    )}
+                    <button 
+                        onClick={() => navigate('/texts')}
+                        style={{
+                            padding: '10px 20px',
+                            fontSize: '14px',
+                            backgroundColor: '#E19EFB',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                        }}
+                    >
+                        Вернуться к выбору текстов
+                    </button>
                 </div>
             </div>
         );
@@ -434,16 +526,6 @@ function TextReading() {
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
-
-    React.useEffect(() => {
-        let interval;
-        if (isRecording) {
-            interval = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [isRecording]);
 
     const handleStartRecording = async () => {
         try {

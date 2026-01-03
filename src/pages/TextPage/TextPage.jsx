@@ -147,47 +147,81 @@ function TextPage() {
     };
 
     React.useEffect(() => {
+        // Загружаем кэш для мгновенного отображения (опционально)
         const cached = sessionStorage.getItem('lingai_sections');
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed) && parsed.length) {
                     setSections(parsed);
-                    return;
                 }
             } catch (e) {
                 console.error('Failed to parse cached sections', e);
             }
         }
 
+        // Загружаем данные с бэкенда
         const fetchSections = async () => {
             try {
                 setIsLoading(true);
                 setError(null);
 
-                const response = await fetch(TEXTS_ENDPOINT);
+                console.log('Fetching texts from:', TEXTS_ENDPOINT);
+                const response = await fetch(TEXTS_ENDPOINT, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
                 if (!response.ok) {
-                    throw new Error(`Failed to load texts: ${response.status}`);
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`Failed to load texts: ${response.status} ${response.statusText}`);
                 }
 
-                const payload = await response.json();
-                const remoteSections = Array.isArray(payload?.sections)
-                    ? payload.sections
-                    : Array.isArray(payload)
-                        ? payload
-                        : [];
+                const texts = await response.json();
+                console.log('Received texts from backend:', texts);
+                
+                // Преобразуем массив текстов в формат секций по сложности
+                const difficultyMap = {
+                    'easy': { id: 'easy', title: 'Лёгкий', bannerColor: '#DFF6E2', labelColor: '#7ACF84', texts: [] },
+                    'medium': { id: 'medium', title: 'Средний', bannerColor: '#FFF6CF', labelColor: '#E7C35A', texts: [] },
+                    'hard': { id: 'hard', title: 'Сложный', bannerColor: '#FFD3D3', labelColor: '#F47B7B', texts: [] }
+                };
+
+                if (Array.isArray(texts) && texts.length > 0) {
+                    texts.forEach(text => {
+                        if (difficultyMap[text.difficulty]) {
+                            difficultyMap[text.difficulty].texts.push({
+                                id: text.id,
+                                title: text.title,
+                                body: text.body
+                            });
+                        }
+                    });
+                }
+
+                const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
+                console.log('Processed sections:', remoteSections);
 
                 if (remoteSections.length) {
                     setSections(remoteSections);
                     sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
                 } else {
                     console.warn('Texts response is empty, using fallback sections');
-                    setSections(FALLBACK_SECTIONS);
+                    // Используем кэш или fallback только если бэкенд вернул пустой ответ
+                    if (!cached) {
+                        setSections(FALLBACK_SECTIONS);
+                    }
                 }
             } catch (e) {
                 console.error('Error loading sections from backend', e);
                 setError('Не удалось загрузить тексты. Показаны примеры.');
-                setSections(FALLBACK_SECTIONS);
+                // При ошибке используем кэш, если он есть, иначе fallback
+                if (!cached) {
+                    setSections(FALLBACK_SECTIONS);
+                }
             } finally {
                 setIsLoading(false);
             }
