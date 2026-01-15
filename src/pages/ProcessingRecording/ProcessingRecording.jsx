@@ -4,14 +4,38 @@ import Header from '../../widgets/Header/Header.jsx';
 
 function ProcessingRecording() {
     const navigate = useNavigate();
+    const [status, setStatus] = React.useState('pending'); // pending | success | error | timeout
+    const [message, setMessage] = React.useState(null);
 
     React.useEffect(() => {
-        // Имитация обработки (3 секунды)
-        const timer = setTimeout(() => {
-            navigate('/results');
-        }, 3000);
+        const startedAt = Date.now();
+        const timeoutMs = 90000; // Увеличиваем до 90 секунд (обработка аудио + синтез речи может занимать время)
+        let timeoutTriggered = false;
 
-        return () => clearTimeout(timer);
+        const interval = setInterval(() => {
+            const current = sessionStorage.getItem('lingai_analysis_status') || 'pending';
+            if (current === 'success') {
+                setStatus('success');
+                clearInterval(interval);
+                navigate('/results', { replace: true });
+                return;
+            }
+            if (current === 'error') {
+                setStatus('error');
+                setMessage(sessionStorage.getItem('lingai_analysis_error_message') || 'Ошибка анализа');
+                clearInterval(interval);
+                return;
+            }
+            // Показываем предупреждение о долгом ожидании, но продолжаем ждать
+            if (!timeoutTriggered && Date.now() - startedAt > timeoutMs) {
+                timeoutTriggered = true;
+                setStatus('timeout');
+                setMessage('Сервер долго отвечает. Обработка может занять некоторое время, пожалуйста, подождите...');
+                // НЕ останавливаем интервал - продолжаем ждать ответа
+            }
+        }, 300);
+
+        return () => clearInterval(interval);
     }, [navigate]);
     const pageStyle = {
         fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
@@ -112,7 +136,35 @@ function ProcessingRecording() {
                         <div style={loaderStyle}></div>
                         <div>
                             <p style={textStyle}>Подождите, запись в обработке</p>
-                            <p style={subtextStyle}>Нейросеть анализирует вашу запись...</p>
+                            <p style={subtextStyle}>
+                                {status === 'pending' && 'Нейросеть анализирует вашу запись...'}
+                                {status === 'error' && (message || 'Ошибка анализа')}
+                                {status === 'timeout' && (message || 'Таймаут ожидания')}
+                            </p>
+                            {status === 'error' && (
+                                <div style={{ marginTop: 16, display: 'flex', gap: 12, justifyContent: 'center' }}>
+                                    <button onClick={() => navigate(-1)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}>
+                                        Назад
+                                    </button>
+                                    <button onClick={() => window.location.reload()} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#E19EFB', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                                        Обновить
+                                    </button>
+                                </div>
+                            )}
+                            {status === 'timeout' && (
+                                <div style={{ marginTop: 16, display: 'flex', gap: 12, justifyContent: 'center' }}>
+                                    <button onClick={() => navigate(-1)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}>
+                                        Назад
+                                    </button>
+                                    <button onClick={() => {
+                                        // При нажатии "Обновить" просто продолжаем ждать - не перезагружаем страницу
+                                        setStatus('pending');
+                                        setMessage(null);
+                                    }} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#E19EFB', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                                        Продолжить ожидание
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
