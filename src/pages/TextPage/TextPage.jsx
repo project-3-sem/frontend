@@ -2,8 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-const TEXTS_ENDPOINT = `${API_BASE_URL}/texts/`;
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+// Нормализуем base URL: убираем trailing slash и необязательный /api в конце
+const API_BASE_URL = String(RAW_API_BASE_URL).replace(/\/$/, '').replace(/\/api$/, '');
+const TEXTS_ENDPOINT = `${API_BASE_URL}/api/texts/`;
 
 const FALLBACK_SECTIONS = [
     {
@@ -49,6 +51,126 @@ function TextPage() {
     const [sections, setSections] = React.useState(FALLBACK_SECTIONS);
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState(null);
+
+    React.useEffect(() => {
+        // Загружаем кэш для мгновенного отображения (опционально)
+        const cached = sessionStorage.getItem('lingai_sections');
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length) {
+                    setSections(parsed);
+                }
+            } catch (e) {
+                console.error('Failed to parse cached sections', e);
+            }
+        }
+
+        // Запрашиваем свежие данные с бэкенда
+        const fetchSections = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                console.log('Fetching texts from:', TEXTS_ENDPOINT);
+                const response = await fetch(TEXTS_ENDPOINT, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'Unknown error');
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`Failed to load texts: ${response.status} ${response.statusText}`);
+                }
+
+                const payload = await response.json();
+                console.log('Received payload from backend:', payload);
+                
+                // Пробуем разные форматы ответа
+                let textsArray = [];
+                
+                if (Array.isArray(payload)) {
+                    // Если payload - это массив текстов напрямую
+                    textsArray = payload;
+                } else if (Array.isArray(payload?.sections)) {
+                    // Если payload имеет поле sections (уже в формате секций)
+                    setSections(payload.sections);
+                    sessionStorage.setItem('lingai_sections', JSON.stringify(payload.sections));
+                    return;
+                } else if (Array.isArray(payload?.data)) {
+                    // Если payload имеет поле data
+                    textsArray = payload.data;
+                } else if (payload && typeof payload === 'object') {
+                    // Если payload - объект, пробуем найти массив внутри
+                    const possibleArrays = Object.values(payload).filter(Array.isArray);
+                    if (possibleArrays.length > 0) {
+                        textsArray = possibleArrays[0];
+                    }
+                }
+                
+                console.log('Texts array:', textsArray);
+
+                // Преобразуем массив текстов в формат секций по сложности
+                if (textsArray.length > 0) {
+                    const difficultyMap = {
+                        'easy': { id: 'easy', title: 'Лёгкий', bannerColor: '#DFF6E2', labelColor: '#7ACF84', texts: [] },
+                        'medium': { id: 'medium', title: 'Средний', bannerColor: '#FFF6CF', labelColor: '#E7C35A', texts: [] },
+                        'hard': { id: 'hard', title: 'Сложный', bannerColor: '#FFD3D3', labelColor: '#F47B7B', texts: [] }
+                    };
+
+                    textsArray.forEach(text => {
+                        const difficulty = text.difficulty || text.level || 'easy';
+                        if (difficultyMap[difficulty]) {
+                            difficultyMap[difficulty].texts.push({
+                                id: text.id ?? text.pk ?? text.uuid ?? text.text_id ?? null,
+                                title: text.title || text.name || 'Без названия',
+                                body: text.body || text.content || text.text || ''
+                            });
+                        } else {
+                            // Если сложность не распознана, добавляем в easy
+                            difficultyMap['easy'].texts.push({
+                                id: text.id ?? text.pk ?? text.uuid ?? text.text_id ?? null,
+                                title: text.title || text.name || 'Без названия',
+                                body: text.body || text.content || text.text || ''
+                            });
+                        }
+                    });
+
+                    // Фильтруем только секции с текстами
+                    const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
+                    console.log('Processed sections:', remoteSections);
+
+                    if (remoteSections.length > 0) {
+                        setSections(remoteSections);
+                        sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
+                    } else {
+                        console.warn('No sections created, using fallback');
+                        if (!cached) {
+                            setSections(FALLBACK_SECTIONS);
+                        }
+                    }
+                } else {
+                    console.warn('Texts response is empty, using fallback sections');
+                    if (!cached) {
+                        setSections(FALLBACK_SECTIONS);
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading sections from backend', e);
+                setError('Не удалось загрузить тексты. Показаны примеры.');
+                if (!cached) {
+                    setSections(FALLBACK_SECTIONS);
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSections();
+    }, []);
 
     const pageStyle = {
         fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
@@ -110,7 +232,9 @@ function TextPage() {
         flexDirection: 'column',
         gap: '12px',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        maxHeight: '180px',
+        overflow: 'hidden'
     };
 
     const handleCardClick = (sectionId, textIndex) => {
@@ -134,101 +258,15 @@ function TextPage() {
         color: '#2B303A'
     };
 
-    const loadingTextStyle = {
-        marginTop: '8px',
-        fontSize: '14px',
-        color: 'rgba(31, 31, 31, 0.6)'
+    // Функция для обрезки текста до превью для карточек
+    const truncateText = (text, maxLength = 100) => {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        // Обрезаем до последнего пробела перед maxLength, чтобы не обрезать слово
+        const truncated = text.substring(0, maxLength);
+        const lastSpace = truncated.lastIndexOf(' ');
+        return lastSpace > 0 ? truncated.substring(0, lastSpace) + '...' : truncated + '...';
     };
-
-    const errorTextStyle = {
-        marginTop: '8px',
-        fontSize: '13px',
-        color: '#D32F2F'
-    };
-
-    React.useEffect(() => {
-        // Загружаем кэш для мгновенного отображения (опционально)
-        const cached = sessionStorage.getItem('lingai_sections');
-        if (cached) {
-            try {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed) && parsed.length) {
-                    setSections(parsed);
-                }
-            } catch (e) {
-                console.error('Failed to parse cached sections', e);
-            }
-        }
-
-        // Загружаем данные с бэкенда
-        const fetchSections = async () => {
-            try {
-                setIsLoading(true);
-                setError(null);
-
-                console.log('Fetching texts from:', TEXTS_ENDPOINT);
-                const response = await fetch(TEXTS_ENDPOINT, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text().catch(() => 'Unknown error');
-                    console.error('API Error:', response.status, errorText);
-                    throw new Error(`Failed to load texts: ${response.status} ${response.statusText}`);
-                }
-
-                const texts = await response.json();
-                console.log('Received texts from backend:', texts);
-                
-                // Преобразуем массив текстов в формат секций по сложности
-                const difficultyMap = {
-                    'easy': { id: 'easy', title: 'Лёгкий', bannerColor: '#DFF6E2', labelColor: '#7ACF84', texts: [] },
-                    'medium': { id: 'medium', title: 'Средний', bannerColor: '#FFF6CF', labelColor: '#E7C35A', texts: [] },
-                    'hard': { id: 'hard', title: 'Сложный', bannerColor: '#FFD3D3', labelColor: '#F47B7B', texts: [] }
-                };
-
-                if (Array.isArray(texts) && texts.length > 0) {
-                    texts.forEach(text => {
-                        if (difficultyMap[text.difficulty]) {
-                            difficultyMap[text.difficulty].texts.push({
-                                id: text.id,
-                                title: text.title,
-                                body: text.body
-                            });
-                        }
-                    });
-                }
-
-                const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
-                console.log('Processed sections:', remoteSections);
-
-                if (remoteSections.length) {
-                    setSections(remoteSections);
-                    sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
-                } else {
-                    console.warn('Texts response is empty, using fallback sections');
-                    // Используем кэш или fallback только если бэкенд вернул пустой ответ
-                    if (!cached) {
-                        setSections(FALLBACK_SECTIONS);
-                    }
-                }
-            } catch (e) {
-                console.error('Error loading sections from backend', e);
-                setError('Не удалось загрузить тексты. Показаны примеры.');
-                // При ошибке используем кэш, если он есть, иначе fallback
-                if (!cached) {
-                    setSections(FALLBACK_SECTIONS);
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchSections();
-    }, []);
 
     return (
         <div style={pageStyle}>
@@ -236,8 +274,8 @@ function TextPage() {
             <div style={contentStyle}>
                 <h1 style={titleStyle}>Выберите текст</h1>
                 <p style={subtitleStyle}>Подберите подходящий по сложности и теме текст для тренировки произношения.</p>
-                {isLoading && <p style={loadingTextStyle}>Загружаем тексты...</p>}
-                {error && !isLoading && <p style={errorTextStyle}>{error}</p>}
+                {isLoading && <p style={{ marginTop: '8px', fontSize: '14px', color: 'rgba(31, 31, 31, 0.6)' }}>Загружаем тексты...</p>}
+                {error && !isLoading && <p style={{ marginTop: '8px', fontSize: '13px', color: '#D32F2F' }}>{error}</p>}
                 <div style={dividerStyle}></div>
 
                 <style>{`
@@ -282,7 +320,7 @@ function TextPage() {
                     }
                 `}</style>
 
-                {sections.map((section) => (
+                {sections && Array.isArray(sections) && sections.map((section) => (
                     <div
                         key={section.id}
                         className="tp-section"
@@ -292,7 +330,7 @@ function TextPage() {
                             <span style={badgeStyle(section.labelColor)}>{section.title}</span>
                         </div>
                         <div className="tp-section__grid">
-                            {section.texts.map((textItem, index) => (
+                            {section.texts && Array.isArray(section.texts) && section.texts.map((textItem, index) => (
                                 <div 
                                     key={`${section.id}-${index}`} 
                                     className="tp-card" 
@@ -300,7 +338,7 @@ function TextPage() {
                                     onClick={() => handleCardClick(section.id, index)}
                                 >
                                     <p style={cardTitleStyle}>{textItem.title}</p>
-                                    <p style={cardBodyStyle}>{textItem.body}</p>
+                                    <p style={cardBodyStyle}>{truncateText(textItem.body, 100)}</p>
                                 </div>
                             ))}
                         </div>

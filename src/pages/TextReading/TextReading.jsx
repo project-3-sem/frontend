@@ -2,12 +2,23 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../../widgets/Header/Header.jsx';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-const TEXTS_ENDPOINT = `${API_BASE_URL}/texts/`;
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Нормализуем base URL: убираем trailing slash и необязательный /api в конце
+const API_BASE_URL = String(RAW_API_BASE_URL).replace(/\/$/, '').replace(/\/api$/, '');
+const TEXTS_ENDPOINT = `${API_BASE_URL}/api/texts/`;
+const AUDIO_PROCESS_ENDPOINT = `${API_BASE_URL}/api/audio/process/`;
+
+// Логируем конфигурацию при загрузке модуля
+console.log('TextReading: API Configuration', {
+    RAW_API_BASE_URL,
+    API_BASE_URL,
+    TEXTS_ENDPOINT,
+    AUDIO_PROCESS_ENDPOINT
+});
 
 const loremText = 'Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.\nIaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenae';
 
-const sections = [
+const FALLBACK_SECTIONS = [
     {
         id: 'easy',
         title: 'Лёгкий',
@@ -44,9 +55,8 @@ function TextReading() {
     const { sectionId, textIndex } = useParams();
     const navigate = useNavigate();
 
-    const [sectionsData, setSectionsData] = React.useState(null);
+    const [sections, setSections] = React.useState(FALLBACK_SECTIONS);
     const [isLoadingTexts, setIsLoadingTexts] = React.useState(true);
-    const [loadError, setLoadError] = React.useState(null);
     const [isRecording, setIsRecording] = React.useState(false);
     const [recordingTime, setRecordingTime] = React.useState(0);
     const [mediaRecorder, setMediaRecorder] = React.useState(null);
@@ -61,28 +71,26 @@ function TextReading() {
         window.scrollTo(0, 0);
     }, [sectionId, textIndex]);
 
+    // Загружаем данные с бэкенда
     React.useEffect(() => {
-        // Загружаем данные с бэкенда
-        // Загружаем кэш для мгновенного отображения (опционально)
+        // Загружаем кэш для мгновенного отображения
         const cached = sessionStorage.getItem('lingai_sections');
-        let cachedData = null;
         if (cached) {
             try {
                 const parsed = JSON.parse(cached);
                 if (Array.isArray(parsed) && parsed.length) {
-                    cachedData = parsed;
-                    setSectionsData(parsed);
+                    setSections(parsed);
+                    setIsLoadingTexts(false);
                 }
             } catch (e) {
-                console.error('Failed to parse cached sections on reading page', e);
+                console.error('Failed to parse cached sections', e);
             }
         }
 
-        // Всегда запрашиваем свежие данные с бэкенда
+        // Запрашиваем свежие данные с бэкенда
         const fetchSections = async () => {
             try {
                 setIsLoadingTexts(true);
-                setLoadError(null);
 
                 console.log('Fetching texts from:', TEXTS_ENDPOINT);
                 const response = await fetch(TEXTS_ENDPOINT, {
@@ -98,57 +106,84 @@ function TextReading() {
                     throw new Error(`Failed to load texts: ${response.status} ${response.statusText}`);
                 }
 
-                const texts = await response.json();
-                console.log('Received texts from backend:', texts);
+                const payload = await response.json();
+                console.log('Received payload from backend:', payload);
                 
-                // Преобразуем массив текстов в формат секций по сложности
-                const difficultyMap = {
-                    'easy': { id: 'easy', title: 'Лёгкий', texts: [] },
-                    'medium': { id: 'medium', title: 'Средний', texts: [] },
-                    'hard': { id: 'hard', title: 'Сложный', texts: [] }
-                };
+                // Пробуем разные форматы ответа
+                let textsArray = [];
+                
+                if (Array.isArray(payload)) {
+                    // Если payload - это массив текстов напрямую
+                    textsArray = payload;
+                } else if (Array.isArray(payload?.sections)) {
+                    // Если payload имеет поле sections (уже в формате секций)
+                    setSections(payload.sections);
+                    sessionStorage.setItem('lingai_sections', JSON.stringify(payload.sections));
+                    setIsLoadingTexts(false);
+                    return;
+                } else if (Array.isArray(payload?.data)) {
+                    // Если payload имеет поле data
+                    textsArray = payload.data;
+                } else if (payload && typeof payload === 'object') {
+                    // Если payload - объект, пробуем найти массив внутри
+                    const possibleArrays = Object.values(payload).filter(Array.isArray);
+                    if (possibleArrays.length > 0) {
+                        textsArray = possibleArrays[0];
+                    }
+                }
+                
+                console.log('Texts array:', textsArray);
 
-                if (Array.isArray(texts) && texts.length > 0) {
-                    texts.forEach(text => {
-                        if (difficultyMap[text.difficulty]) {
-                            difficultyMap[text.difficulty].texts.push({
-                                id: text.id,
-                                title: text.title,
-                                body: text.body
+                // Преобразуем массив текстов в формат секций по сложности
+                if (textsArray.length > 0) {
+                    const difficultyMap = {
+                        'easy': { id: 'easy', title: 'Лёгкий', bannerColor: '#DFF6E2', labelColor: '#7ACF84', texts: [] },
+                        'medium': { id: 'medium', title: 'Средний', bannerColor: '#FFF6CF', labelColor: '#E7C35A', texts: [] },
+                        'hard': { id: 'hard', title: 'Сложный', bannerColor: '#FFD3D3', labelColor: '#F47B7B', texts: [] }
+                    };
+
+                    textsArray.forEach(text => {
+                        const difficulty = text.difficulty || text.level || 'easy';
+                        if (difficultyMap[difficulty]) {
+                            difficultyMap[difficulty].texts.push({
+                                id: text.id ?? text.pk ?? text.uuid ?? text.text_id ?? null,
+                                title: text.title || text.name || 'Без названия',
+                                body: text.body || text.content || text.text || ''
+                            });
+                        } else {
+                            // Если сложность не распознана, добавляем в easy
+                            difficultyMap['easy'].texts.push({
+                                id: text.id ?? text.pk ?? text.uuid ?? text.text_id ?? null,
+                                title: text.title || text.name || 'Без названия',
+                                body: text.body || text.content || text.text || ''
                             });
                         }
                     });
-                }
 
-                const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
-                console.log('Processed sections:', remoteSections);
-                console.log('Sections count:', remoteSections.length);
+                    // Фильтруем только секции с текстами
+                    const remoteSections = Object.values(difficultyMap).filter(section => section.texts.length > 0);
+                    console.log('Processed sections:', remoteSections);
 
-                if (remoteSections.length) {
-                    setSectionsData(remoteSections);
+                    if (remoteSections.length > 0) {
+                        setSections(remoteSections);
                     sessionStorage.setItem('lingai_sections', JSON.stringify(remoteSections));
                 } else {
-                    console.warn('Empty response from backend');
-                    // если бэк вернул пустой массив — используем кэш или локальные заглушки
-                    if (cachedData) {
-                        console.log('Using cached data');
-                        setSectionsData(cachedData);
-                    } else {
-                        console.log('Using fallback sections');
-                        setSectionsData(sections);
-                        setLoadError('Пустой ответ от сервера, показаны примеры.');
+                        console.warn('No sections created, using fallback');
+                        if (!cached) {
+                            setSections(FALLBACK_SECTIONS);
+                        }
+                    }
+                } else {
+                    console.warn('Texts response is empty, using fallback sections');
+                    if (!cached) {
+                        setSections(FALLBACK_SECTIONS);
                     }
                 }
             } catch (e) {
                 console.error('Error loading sections on reading page', e);
-                // При ошибке используем кэш, если он есть, иначе fallback
-                if (cachedData) {
-                    console.log('Error occurred, using cached data');
-                    setSectionsData(cachedData);
-                } else {
-                    console.log('Error occurred, using fallback sections');
-                    setSectionsData(sections);
-                    setLoadError('Не удалось загрузить текст с сервера, показан пример.');
+                const cached = sessionStorage.getItem('lingai_sections');
+                if (!cached) {
+                    setSections(FALLBACK_SECTIONS);
                 }
             } finally {
                 setIsLoadingTexts(false);
@@ -156,19 +191,7 @@ function TextReading() {
         };
 
         fetchSections();
-    }, [sectionId, textIndex]);
-
-    const section = sectionsData?.find((s) => String(s.id) === String(sectionId));
-    const textItem = section?.texts?.[parseInt(textIndex, 10)];
-
-    // Отладочная информация (логируем только при наличии данных)
-    if (sectionsData) {
-        console.log('Sections data:', sectionsData);
-        console.log('Looking for sectionId:', sectionId);
-        console.log('Found section:', section);
-        console.log('Looking for textIndex:', textIndex);
-        console.log('Found textItem:', textItem);
-    }
+    }, []);
 
     // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ДО РАННИХ RETURN'ОВ
     React.useEffect(() => {
@@ -180,6 +203,46 @@ function TextReading() {
         }
         return () => clearInterval(interval);
     }, [isRecording]);
+
+    // Очищаем состояние записи при смене текста (но НЕ очищаем recordingBlob, если запись уже сделана)
+    // Это позволяет пользователю сделать запись, выбрать другой текст и отправить запись для нового текста
+    React.useEffect(() => {
+        // Останавливаем запись, если она идет
+        if (isRecording && mediaRecorder) {
+            try {
+                mediaRecorder.stop();
+            } catch (e) {
+                console.warn('Error stopping recorder on text change:', e);
+            }
+        }
+        
+        // Останавливаем воспроизведение
+        if (audioRef.current) {
+            try {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            } catch (e) {
+                console.warn('Error stopping audio on text change:', e);
+            }
+        }
+        
+        // Очищаем состояние записи (но НЕ recordingBlob - он может быть использован для нового текста)
+        setIsRecording(false);
+        setRecordingTime(0);
+        setHasRecording(false);
+        // НЕ очищаем setRecordingBlob(null) - позволяем использовать существующую запись для нового текста
+        setIsPlaying(false);
+        chunksRef.current = [];
+        
+        // Останавливаем медиа-стрим
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            mediaStreamRef.current = null;
+        }
+    }, [sectionId, textIndex]); // Очищаем при смене sectionId или textIndex
+
+    const section = sections && Array.isArray(sections) ? sections.find(s => s.id === sectionId) : null;
+    const textItem = section && section.texts && Array.isArray(section.texts) ? section.texts[parseInt(textIndex, 10)] : null;
 
     if (isLoadingTexts) {
         return (
@@ -197,35 +260,8 @@ function TextReading() {
             <div>
                 <Header background="#FFFFFF" animated={false} />
                 <div style={{ padding: '48px', textAlign: 'center' }}>
-                    <p style={{ marginBottom: '16px', fontSize: '16px', color: '#666' }}>
-                        {loadError || 'Текст не найден'}
-                    </p>
-                    {sectionsData && (
-                        <div style={{ marginBottom: '16px', fontSize: '14px', color: '#999' }}>
-                            <p>Доступные секции: {sectionsData.map(s => s.id).join(', ')}</p>
-                            {section && (
-                                <p>Текстов в секции "{section.title}": {section.texts?.length || 0}</p>
-                            )}
-                            {!section && (
-                                <p>Секция с id "{sectionId}" не найдена</p>
-                            )}
-                        </div>
-                    )}
-                    <button 
-                        onClick={() => navigate('/texts')}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '14px',
-                            backgroundColor: '#E19EFB',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontWeight: 600
-                        }}
-                    >
-                        Вернуться к выбору текстов
-                    </button>
+                    <p>Текст не найден</p>
+                    <button onClick={() => navigate('/texts')}>Вернуться к выбору текстов</button>
                 </div>
             </div>
         );
@@ -401,7 +437,8 @@ function TextReading() {
     const textCardStyle = {
         width: '640px',
         maxWidth: '100%',
-        height: isCompact ? 'auto' : '700px',
+        height: 'auto',
+        minHeight: isCompact ? 'auto' : '400px',
         background: '#FDFDFE',
         borderRadius: '18px',
         boxShadow: '0 14px 40px rgba(0, 0, 0, 0.08)',
@@ -410,7 +447,8 @@ function TextReading() {
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '16px',
+        justifyContent: 'space-between'
     };
 
     const textHeaderStyle = {
@@ -424,21 +462,22 @@ function TextReading() {
 
     const textBodyStyle = {
         margin: 0,
-        fontSize: '16px',
-        lineHeight: 1.6,
+        fontSize: isCompact ? '18px' : '20px',
+        lineHeight: 1.7,
         color: '#222222',
-        maxHeight: isCompact ? 'none' : '600px',
-        overflowY: isCompact ? 'visible' : 'auto'
+        flex: 1,
+        overflowY: 'visible'
     };
 
     const controlsStyle = {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: '16px',
+        marginTop: '8px',
         paddingTop: '12px',
         borderTop: '1px solid rgba(0, 0, 0, 0.1)',
-        width: '100%'
+        width: '100%',
+        flexShrink: 0
     };
 
     const recordingControlsStyle = {
@@ -446,11 +485,12 @@ function TextReading() {
         justifyContent: 'center',
         alignItems: 'center',
         gap: isCompact ? '8px' : '12px',
-        marginTop: '16px',
+        marginTop: '8px',
         paddingTop: '12px',
         borderTop: '1px solid rgba(0, 0, 0, 0.1)',
         width: '100%',
-        flexWrap: isCompact ? 'wrap' : 'nowrap'
+        flexWrap: isCompact ? 'wrap' : 'nowrap',
+        flexShrink: 0
     };
 
     const reviewButtonStyle = {
@@ -603,11 +643,287 @@ function TextReading() {
         }
     };
 
-    const handleSendForReview = () => {
-        if (recordingBlob) {
-            // TODO: Отправить recordingBlob на бэкенд
-            console.log('Отправка записи на проверку:', recordingBlob);
+    const normalizeErrors = (payload) => {
+        if (!payload) return {};
+
+        // вариант: { errors: { word: type } }
+        if (payload.errors && typeof payload.errors === 'object' && !Array.isArray(payload.errors)) {
+            return payload.errors;
+        }
+
+        // вариант: { errors: [{ word, type }, ...] } или { mistakes: [...] }
+        const list =
+            (Array.isArray(payload.errors) && payload.errors) ||
+            (Array.isArray(payload.mistakes) && payload.mistakes) ||
+            (Array.isArray(payload.items) && payload.items) ||
+            (Array.isArray(payload.data) && payload.data) ||
+            (Array.isArray(payload) && payload) ||
+            [];
+
+        if (Array.isArray(list)) {
+            const map = {};
+            for (const item of list) {
+                if (!item || typeof item !== 'object') continue;
+                const word = item.word ?? item.token ?? item.text ?? item.value;
+                const type = item.type ?? item.kind ?? item.category ?? item.error_type;
+                if (typeof word === 'string' && word.length) {
+                    map[word] = type || 'pronunciation';
+                }
+            }
+            return map;
+        }
+
+        return {};
+    };
+
+    const encodeWav16BitPCM = (samples, sampleRate) => {
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+
+        const writeString = (offset, str) => {
+            for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+        };
+
+        // RIFF header
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeString(8, 'WAVE');
+
+        // fmt chunk
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true); // PCM
+        view.setUint16(20, 1, true); // AudioFormat=PCM
+        view.setUint16(22, 1, true); // NumChannels=1
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true); // ByteRate=SampleRate*NumChannels*BitsPerSample/8
+        view.setUint16(32, 2, true); // BlockAlign=NumChannels*BitsPerSample/8
+        view.setUint16(34, 16, true); // BitsPerSample
+
+        // data chunk
+        writeString(36, 'data');
+        view.setUint32(40, samples.length * 2, true);
+
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++, offset += 2) {
+            const s = Math.max(-1, Math.min(1, samples[i]));
+            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        }
+
+        return buffer;
+    };
+
+    const blobToWav16kMono = async (blob) => {
+        const arrayBuffer = await blob.arrayBuffer();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+
+        // downmix to mono (Float32Array)
+        const toMono = () => {
+            const ch0 = decoded.getChannelData(0);
+            if (decoded.numberOfChannels === 1) return ch0;
+            const ch1 = decoded.getChannelData(1);
+            const out = new Float32Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) out[i] = (ch0[i] + ch1[i]) / 2;
+            return out;
+        };
+
+        const mono = toMono();
+
+        // resample to 16000 Hz using OfflineAudioContext
+        const targetRate = 16000;
+        const duration = decoded.duration;
+        const frameCount = Math.ceil(duration * targetRate);
+        const offline = new OfflineAudioContext(1, frameCount, targetRate);
+        const buffer = offline.createBuffer(1, mono.length, decoded.sampleRate);
+        buffer.copyToChannel(mono, 0, 0);
+        const source = offline.createBufferSource();
+        source.buffer = buffer;
+        source.connect(offline.destination);
+        source.start(0);
+        const rendered = await offline.startRendering();
+        const renderedMono = rendered.getChannelData(0);
+
+        const wavBuffer = encodeWav16BitPCM(renderedMono, targetRate);
+        return new Blob([wavBuffer], { type: 'audio/wav' });
+    };
+
+    const analyzeRecording = async ({ blob, text }) => {
+        console.log('analyzeRecording: Starting analysis', { 
+            endpoint: AUDIO_PROCESS_ENDPOINT,
+            textLength: text?.length || 0,
+            blobSize: blob?.size || 0,
+            blobType: blob?.type || 'unknown'
+        });
+
+        // Бэк ожидает WAV mono 16000Hz. Конвертируем из webm/opus в wav.
+        let wavBlob;
+        try {
+            wavBlob = await blobToWav16kMono(blob);
+            console.log('analyzeRecording: Audio converted to WAV', { 
+                wavSize: wavBlob?.size || 0 
+            });
+        } catch (conversionError) {
+            console.error('analyzeRecording: Audio conversion failed', conversionError);
+            throw new Error(`Ошибка конвертации аудио: ${conversionError?.message || 'Неизвестная ошибка'}`);
+        }
+
+        const form = new FormData();
+        form.append('text', text || '');
+        form.append('audio', new File([wavBlob], 'recording.wav', { type: 'audio/wav' }));
+        form.append('enable_tts', 'true'); // Включаем генерацию аудио для правильного произношения
+
+        console.log('analyzeRecording: Sending request to', AUDIO_PROCESS_ENDPOINT, {
+            textLength: text?.length || 0,
+            audioFileSize: wavBlob?.size || 0,
+            hasText: !!text,
+            hasAudio: !!wavBlob
+        });
+
+        let res;
+        try {
+            res = await fetch(AUDIO_PROCESS_ENDPOINT, { 
+                method: 'POST', 
+                body: form 
+            });
+            console.log('analyzeRecording: Response received', { 
+                status: res.status, 
+                statusText: res.statusText,
+                ok: res.ok 
+            });
+        } catch (networkError) {
+            console.error('analyzeRecording: Network error', networkError);
+            // Обработка сетевых ошибок (бэкенд не запущен, CORS, и т.д.)
+            throw new Error(`Failed to fetch: ${networkError?.message || 'Не удалось подключиться к серверу'}`);
+        }
+        
+        if (!res.ok) {
+            const errorText = await res.text().catch(() => '');
+            throw new Error(`Audio process failed: ${res.status} ${res.statusText} ${errorText}`.trim());
+        }
+        const payload = await res.json().catch(() => ({}));
+        
+        // Отладочные логи для проверки данных от бэкенда
+        console.log('TextReading: Raw payload from backend:', payload);
+        if (payload.mispronouncedWords && payload.mispronouncedWords.length > 0) {
+            console.log('TextReading: First mispronouncedWord:', payload.mispronouncedWords[0]);
+            console.log('TextReading: First mispronouncedWord keys:', Object.keys(payload.mispronouncedWords[0] || {}));
+            console.log('TextReading: First mispronouncedWord.audioUrl:', payload.mispronouncedWords[0]?.audioUrl);
+        }
+        if (payload.correctionClips) {
+            console.log('TextReading: correctionClips:', payload.correctionClips);
+        }
+        
+        const errors = normalizeErrors(payload);
+        return { endpoint: AUDIO_PROCESS_ENDPOINT, payload, errors };
+    };
+
+    const handleSendForReview = async () => {
+        if (!recordingBlob) {
+            console.warn('No recording blob available');
+            return;
+        }
+
+        // Проверяем, что textItem существует и актуален
+        if (!textItem || !textItem.body) {
+            console.error('Text item is missing or has no body');
+            alert('Ошибка: текст не найден. Пожалуйста, вернитесь и выберите текст заново.');
+            return;
+        }
+
+        const idx = parseInt(textIndex, 10);
+        const currentSectionId = sectionId;
+        
+        // Проверяем, что индексы актуальны
+        if (!currentSectionId || !Number.isFinite(idx)) {
+            console.error('Invalid sectionId or textIndex:', { currentSectionId, idx });
+            alert('Ошибка: некорректные параметры текста. Пожалуйста, вернитесь и выберите текст заново.');
+            return;
+        }
+
+        // Получаем актуальный текст из текущего состояния
+        const currentSection = sections && Array.isArray(sections) ? sections.find(s => s.id === currentSectionId) : null;
+        const currentTextItem = currentSection && currentSection.texts && Array.isArray(currentSection.texts) 
+            ? currentSection.texts[idx] 
+            : null;
+
+        if (!currentTextItem || !currentTextItem.body) {
+            console.error('Current text item not found:', { currentSectionId, idx, sections });
+            alert('Ошибка: текст не найден. Пожалуйста, вернитесь и выберите текст заново.');
+            return;
+        }
+
+        const textToAnalyze = currentTextItem.body;
+        console.log('handleSendForReview: Preparing to send', { 
+            sectionId: currentSectionId, 
+            textIndex: idx, 
+            textLength: textToAnalyze.length,
+            textPreview: textToAnalyze.substring(0, 50) + '...',
+            recordingBlobSize: recordingBlob?.size || 0,
+            recordingBlobType: recordingBlob?.type || 'unknown',
+            hasRecordingBlob: !!recordingBlob,
+            endpoint: AUDIO_PROCESS_ENDPOINT
+        });
+
+        // Проверяем, что recordingBlob валиден
+        if (!recordingBlob || recordingBlob.size === 0) {
+            console.error('handleSendForReview: Invalid recording blob', { 
+                blob: recordingBlob,
+                size: recordingBlob?.size 
+            });
+            alert('Ошибка: запись не найдена. Пожалуйста, сделайте запись заново.');
+            return;
+        }
+
+        // Сохраняем информацию о выбранном тексте для страницы результатов
+        sessionStorage.setItem(
+            'lingai_current_text',
+            JSON.stringify({
+                sectionId: currentSectionId,
+                textIndex: idx
+            })
+        );
+
+        // очищаем старые результаты
+        sessionStorage.removeItem('lingai_analysis_errors');
+        sessionStorage.removeItem('lingai_analysis_result');
+        sessionStorage.setItem('lingai_analysis_status', 'pending');
+
+        // UX: сразу показываем экран "обработка"
             navigate('/processing');
+
+        try {
+            const result = await analyzeRecording({
+                blob: recordingBlob,
+                text: textToAnalyze // Используем актуальный текст
+            });
+
+            // сохраняем полный ответ анализа (нужен для подсветки по позициям)
+            sessionStorage.setItem('lingai_analysis_result', JSON.stringify(result.payload || {}));
+            sessionStorage.setItem('lingai_analysis_errors', JSON.stringify(result.errors || {}));
+            sessionStorage.setItem('lingai_analysis_status', 'success');
+            sessionStorage.setItem('lingai_analysis_meta', JSON.stringify({ endpoint: result.endpoint }));
+        } catch (e) {
+            console.error('Analyze error:', e);
+            sessionStorage.setItem('lingai_analysis_status', 'error');
+            
+            // Формируем понятное сообщение об ошибке
+            let errorMessage = 'Ошибка при анализе записи';
+            const errorStr = String(e?.message || e || '');
+            
+            if (errorStr.includes('Failed to fetch') || errorStr.includes('NetworkError') || errorStr.includes('Network request failed')) {
+                errorMessage = 'Не удалось подключиться к серверу. Убедитесь, что бэкенд запущен на http://localhost:8000';
+            } else if (errorStr.includes('400')) {
+                errorMessage = 'Ошибка запроса. Проверьте настройки бэкенда.';
+            } else if (errorStr.includes('500')) {
+                errorMessage = 'Ошибка сервера. Попробуйте позже.';
+            } else if (errorStr.includes('YANDEX') || errorStr.includes('TTS')) {
+                errorMessage = 'Ошибка синтеза речи. Проверьте настройки Yandex API на бэкенде.';
+            } else if (errorStr) {
+                errorMessage = errorStr;
+            }
+            
+            sessionStorage.setItem('lingai_analysis_error_message', errorMessage);
         }
     };
 
